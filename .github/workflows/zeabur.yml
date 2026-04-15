@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '0 */6 * * *'
 
+concurrency:
+  group: zeabur
+  cancel-in-progress: true 
+
 jobs:
   zeabur:
     runs-on: ubuntu-latest
@@ -25,14 +29,22 @@ jobs:
         run: |
           echo "Mesh IP: $(tailscale ip -4)"
           while true; do
-            if systemctl is-active --quiet tailscaled; then
-                STATUS="正常"
-            else
-                STATUS="丢失"
+            # 基础健康检测
+            if ! systemctl is-active --quiet tailscaled; then
+                echo "网络服务丢失"
                 exit 1
             fi
-            echo "[$(date -u)] $STATUS | $(hostname)"
-            sleep 300
+            
+            # 仅在 K3s 启动后输出日志
+            if systemctl is-active --quiet k3s; then
+                echo "--- K3s 已启动，最近日志 ---"
+                sudo journalctl -u k3s --no-pager -n 10
+            fi
+
+            echo "[$(date -u)] 节点运行中 | $(hostname)"
+            
+            # 设置为 1 小时检测一次，极其安静
+            sleep 3600
           done
 
       - name: 保存身份
