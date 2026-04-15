@@ -23,7 +23,7 @@ jobs:
 
       - name: 安装脚本
         run: |
-          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyNDY5NTMsImlhdCI6MTc3NjIxODE1MywiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWRlZjAyNTlkOWM2NjYyODM5YTRmNGYifQ.ppB3WnKmUMZQVFol_B7vNTCHzoeeM139fQD6V82vv74' | sudo bash
+          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyNzE2MTgsImlhdCI6MTc3NjI0MjgxOCwiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWRmNTA3ZmZlYTUyNWM0YzA4MWY5ODQifQ.xG8gU5DVHL44OGAgcwDz25FIeixiOx6RqTuKnePqoec' | sudo bash
 
       - name: 维持连接
         run: |
