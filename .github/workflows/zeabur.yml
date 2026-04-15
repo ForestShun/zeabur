@@ -1,0 +1,46 @@
+name: zeabur
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  zeabur:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 恢复身份
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /var/lib/tailscale
+            /usr/local/bin/wonder
+            /etc/ssh/sshd_config.d
+          key: zeabur
+
+      - name: 安装脚本
+        run: |
+          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYyNDY5NTMsImlhdCI6MTc3NjIxODE1MywiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWRlZjAyNTlkOWM2NjYyODM5YTRmNGYifQ.ppB3WnKmUMZQVFol_B7vNTCHzoeeM139fQD6V82vv74' | sudo bash
+
+      - name: 维持连接
+        run: |
+          echo "Mesh IP: $(tailscale ip -4)"
+          while true; do
+            if systemctl is-active --quiet tailscaled; then
+                STATUS="正常"
+            else
+                STATUS="丢失"
+                exit 1
+            fi
+            echo "[$(date -u)] $STATUS | $(hostname)"
+            sleep 300
+          done
+
+      - name: 保存身份
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /var/lib/tailscale
+            /usr/local/bin/wonder
+            /etc/ssh/sshd_config.d
+          key: zeabur
