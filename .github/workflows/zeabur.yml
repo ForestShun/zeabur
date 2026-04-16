@@ -58,19 +58,18 @@ jobs:
           echo "等待响应..."
           for i in {1..60}; do
             if sudo k3s kubectl get node >/dev/null 2>&1; then
-              echo -e "\n[OK] K3s 已就绪，正在重建..."
-              sudo k3s kubectl delete pods --all -A --force --grace-period=0 || true
+              echo -e "\n[OK] K3s 已就绪"
               break
             fi
             echo -n "."
-            sleep 2
+            sleep 3
           done
 
       - name: 维持运行
         run: |
           echo "节点在线: $(tailscale ip -4)"
           while true; do
-            if ! systemctl is-active --quiet tailscaled; then exit 1; fi
+            if ! systemctl is-active --quiet k3s; then exit 1; fi
             echo "[$(date -u)] 状态正常 | $(hostname)"
             sleep 3600
           done
