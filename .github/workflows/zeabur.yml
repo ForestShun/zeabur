@@ -75,12 +75,6 @@ jobs:
               sleep 5
               if ! systemctl is-active --quiet tailscaled; then exit 1; fi
             fi
-            if ! systemctl is-active --quiet wonder; then 
-              echo "Wonder 代理掉线，尝试重启..."
-              sudo systemctl restart wonder || true
-              sleep 5
-              if ! systemctl is-active --quiet wonder; then exit 1; fi
-            fi
             echo "[$(date -u)] 状态正常 | $(hostname)"
             sleep 300
           done
