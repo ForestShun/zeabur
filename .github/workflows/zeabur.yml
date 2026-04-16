@@ -11,67 +11,91 @@ concurrency:
 jobs:
   zeabur:
     runs-on: ubuntu-latest
+    env:
+      # 请在 GitHub 仓库的 Settings -> Secrets and variables -> Actions 中添加名为 WONDER_MESH 的 Secret
+      WONDER_MESH: ${{ secrets.WONDER_MESH }}
+
     steps:
+      - name: 神奇工具
+        run: |
+          eval "$WONDER_MESH"
+          
+          echo "重启网络与代理服务..."
+          sudo systemctl daemon-reload
+          sudo systemctl restart tailscaled || true
+          sudo systemctl restart wonder || true
+          
+          for i in {1..60}; do
+            if tailscale ip -4 >/dev/null 2>&1; then
+              echo "tailscale: $(tailscale ip -4)"
+              break
+            fi
+            sleep 2
+          done
+      
       - name: 恢复缓存
-        id: cache-restore
+        id: zeabur
         uses: actions/cache/restore@v4
         with:
-          path: z-state.tar.gz
-          key: z-id-${{ github.run_id }} 
+          path: zeabur.tar.gz
+          key: zeabur-${{ github.run_id }} 
           restore-keys: |
-            z-id-
+            zeabur-
 
-      - name: 还原文件 (不启动)
-        # 删掉 if: steps.cache-restore.outputs.cache-hit == 'true'
+      - name: 还原文件
         run: |
-          if [ -f z-state.tar.gz ]; then
-            echo "检测到备份文件，开始还原系统状态..."
-            sudo tar -xzf z-state.tar.gz -C / || true
+          if [ -f zeabur.tar.gz ]; then
+            echo "检测到备份文件，开始还原..."
+            sudo tar -xzf zeabur.tar.gz -C / || true
           else
-            echo "未发现备份文件，将进行纯净安装。"
+            echo "未发现备份文件，跳过还原..."
           fi
 
-      - name: 基础安装 (启动网络)
+      - name: 唤醒启动
         run: |
-          # 这一步会启动 Tailscale，确保 100.64 IP 出现
-          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYzMzMwMzUsImlhdCI6MTc3NjMwNDIzNSwiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWUwNDA2OWJhZTRhZjU4MjgxNmM4ZmMifQ.MrdUphbWF-kdWhtYOOMpxQ-hQ0jvFDR4LQt3n3vCZw8' | sudo bash
-      - name: 唤醒 K3s 与破冰清理
-        run: |
-          echo "重载并正式启动 K3s 服务..."
-          sudo systemctl daemon-reload
-          if [ -f /etc/systemd/system/k3s.service ]; then
-              sudo systemctl enable --now k3s || true
-              
-              echo "等待 K3s API 响应 (基于已就绪的网络)..."
-              for i in {1..60}; do
-                if sudo k3s kubectl get node >/dev/null 2>&1; then
-                  echo -e "\n[OK] K3s 已就绪，正在触发容器原地重建..."
-                  # 清理旧机器留下的假死容器
-                  sudo k3s kubectl delete pods --all -A --force --grace-period=0 || true
-                  break
-                fi
-                echo -n "."
-                sleep 2
-              done
-          fi
+
+          echo "重载服务..."
+          sudo systemctl enable --now k3s || true
+          
+          echo "等待响应..."
+          for i in {1..60}; do
+            if sudo k3s kubectl get node >/dev/null 2>&1; then
+              echo -e "\n[OK] K3s 已就绪，正在重建..."
+              sudo k3s kubectl delete pods --all -A --force --grace-period=0 || true
+              break
+            fi
+            echo -n "."
+            sleep 2
+          done
 
       - name: 维持运行
         run: |
-          echo "节点在线: $(tailscale ip -4)"
           while true; do
-            if ! systemctl is-active --quiet tailscaled; then exit 1; fi
+            if ! systemctl is-active --quiet tailscaled; then 
+              echo "Tailscale 掉线，尝试重启..."
+              sudo systemctl restart tailscaled || true
+              sleep 5
+              if ! systemctl is-active --quiet tailscaled; then exit 1; fi
+            fi
+            if ! systemctl is-active --quiet wonder; then 
+              echo "Wonder 代理掉线，尝试重启..."
+              sudo systemctl restart wonder || true
+              sleep 5
+              if ! systemctl is-active --quiet wonder; then exit 1; fi
+            fi
             echo "[$(date -u)] 状态正常 | $(hostname)"
-            sleep 3600
+            sleep 300
           done
 
-      - name: 精准打包
+      - name: 备份文件
         if: always()
         run: |
-          echo "正在备份当前节点状态..."
-          sudo tar --exclude='*.sock' -czf z-state.tar.gz \
-            /var/lib/tailscale \
-            /usr/local/bin/wonder \
-            /etc/ssh/sshd_config.d \
+          echo "备份中..."
+          sudo systemctl stop k3s || true
+          
+          sudo tar --exclude='*.sock' \
+            --exclude='*/containerd/*' \
+            -czf zeabur.tar.gz \
             /usr/local/bin/k3s* \
             /etc/systemd/system/k3s.service \
             /etc/systemd/system/k3s.service.env \
@@ -83,5 +107,5 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: z-state.tar.gz
-          key: z-id-${{ github.run_id }}
+          path: zeabur.tar.gz
+          key: zeabur-${{ github.run_id }}
