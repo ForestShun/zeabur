@@ -12,72 +12,62 @@ jobs:
   zeabur:
     runs-on: ubuntu-latest
     steps:
-      - name: 恢复全局系统缓存
+      - name: 恢复缓存 (自动寻找最新版本)
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
-          path: zeabur-state.tar.gz
-          key: zeabur
+          path: z-state.tar.gz
+          # 尝试找当前的精确 ID，找不到就往下看 restore-keys
+          key: z-id-${{ github.run_id }} 
+          restore-keys: |
+            z-id-
 
-      - name: 还原全局状态并唤醒服务
-        if: steps.cache-restore.outputs.cache-hit == 'true'
+      - name: 还原与唤醒
+        if: steps.cache-restore.outputs.cache-hit == 'true' || steps.cache-restore.outputs.cache-primary-key != steps.cache-restore.outputs.cache-matched-key
         run: |
-          echo "开始还原系统全局状态..."
-          sudo tar -xzf zeabur-state.tar.gz -C / || true
+          echo "解压 1.5G+ 的系统状态包 (请耐心等待)..."
+          sudo tar -xzf z-state.tar.gz -C / || true
           
-          echo "重载系统服务..."
+          echo "重载并唤醒 K3s..."
           sudo systemctl daemon-reload
-          
-          # 自动唤醒所有可能被 Zeabur 安装的关键服务
-          sudo systemctl start tailscaled || true
-          sudo systemctl start ssh || true
-          # 动态查找并启动所有 k3s 相关的服务
-          for svc in $(systemctl list-unit-files | grep -E '^k3s.*\.service' | awk '{print $1}'); do
-            echo "尝试唤醒服务: $svc"
-            sudo systemctl enable --now "$svc" || true
-          done
+          if [ -f /etc/systemd/system/k3s.service ]; then
+              sudo systemctl enable --now k3s || true
+          fi
 
-      - name: 验证与安装基础脚本
+      - name: 基础安装
         run: |
-          # 即使已还原，再跑一次官方脚本确保底层依赖就绪（官方脚本有幂等性，已有环境会跳过）
-          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYzMzE0MzcsImlhdCI6MTc3NjMwMjYzNywiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWUwM2EyYmJhZTRhZjU4MjgxNmM4ZmEifQ.9ywJUJsKWimHxAjS1LSsyTjZaz_TFcLcfigjRju7Edc' | sudo bash
-
-      - name: 维持连接
+          curl -fsSL 'https://api.zeabur.com/mesh-server/install.sh?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzYzMzMwMzUsImlhdCI6MTc3NjMwNDIzNSwiaXNzIjoiemVhYnVyLW1lc2giLCJzZXJ2ZXJfaWQiOiI2OWUwNDA2OWJhZTRhZjU4MjgxNmM4ZmMifQ.MrdUphbWF-kdWhtYOOMpxQ-hQ0jvFDR4LQt3n3vCZw8' | sudo bash
+      - name: 维持运行
         run: |
           echo "Mesh IP: $(tailscale ip -4)"
           while true; do
             if ! systemctl is-active --quiet tailscaled; then
-                echo "网络服务丢失"
                 exit 1
             fi
             echo "[$(date -u)] 节点在线 | $(hostname)"
             sleep 3600
           done
 
-      - name: 全局状态打包 (深度备份)
+      - name: 精准打包
         if: always()
         run: |
-          echo "正在打包全局环境..."
-          # 备份核心配置、第三方软件、数据存储
-          # 排除 socket、系统自带包管理器缓存、动态网络配置以防系统崩溃
-          sudo tar --exclude='*.sock' \
-                   --exclude='/var/lib/apt' \
-                   --exclude='/var/lib/dpkg' \
-                   --exclude='/var/cache' \
-                   --exclude='/etc/resolv.conf' \
-                   --exclude='/etc/hosts' \
-                   --exclude='/etc/hostname' \
-                   -czf zeabur-state.tar.gz \
-                   /etc \
-                   /var/lib \
-                   /usr/local \
-                   /opt \
-                   /root \
-                   2>/dev/null || true
+          echo "正在打包容器数据及配置..."
+          # 忽略 sock 文件以防报错，打包核心 8 大路径
+          sudo tar --exclude='*.sock' -czf z-state.tar.gz \
+            /var/lib/tailscale \
+            /usr/local/bin/wonder \
+            /etc/ssh/sshd_config.d \
+            /usr/local/bin/k3s* \
+            /etc/systemd/system/k3s.service \
+            /etc/systemd/system/k3s.service.env \
+            /etc/rancher/k3s \
+            /var/lib/rancher/k3s \
+            2>/dev/null || true
 
-      - name: 保存全局系统缓存
+      - name: 保存最新缓存
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: zeabur-state.tar.gz
-          key: zeabur
+          path: z-state.tar.gz
+          # 每次保存都带上本次的唯一运行 ID，确保必定保存成功
+          key: z-id-${{ github.run_id }}
