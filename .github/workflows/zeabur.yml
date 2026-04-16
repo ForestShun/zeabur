@@ -34,6 +34,9 @@ jobs:
           if [ -f zeabur.tar.gz ]; then
             echo "检测到备份文件，开始还原..."
             sudo tar -xzf zeabur.tar.gz -C / || true
+            mkdir -p ~/.kube
+            sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+            sudo chown $USER ~/.kube/config
           else
             echo "未发现备份文件，跳过还原..."
           fi
@@ -42,9 +45,6 @@ jobs:
         run: |
 
           echo "重载服务..."
-          mkdir -p ~/.kube
-          sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-          sudo chown $USER ~/.kube/config
           sudo systemctl daemon-reload
           sudo systemctl enable --now k3s || true
           
