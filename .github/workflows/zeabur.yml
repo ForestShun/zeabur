@@ -68,15 +68,11 @@ jobs:
 
       - name: 维持运行
         run: |
+          echo "节点在线: $(tailscale ip -4)"
           while true; do
-            if ! systemctl is-active --quiet tailscaled; then 
-              echo "Tailscale 掉线，尝试重启..."
-              sudo systemctl restart tailscaled || true
-              sleep 5
-              if ! systemctl is-active --quiet tailscaled; then exit 1; fi
-            fi
+            if ! systemctl is-active --quiet tailscaled; then exit 1; fi
             echo "[$(date -u)] 状态正常 | $(hostname)"
-            sleep 300
+            sleep 3600
           done
 
       - name: 备份文件
