@@ -22,8 +22,6 @@ jobs:
           
           echo "重启网络与代理服务..."
           sudo systemctl daemon-reload
-          sudo systemctl restart tailscaled || true
-          sudo systemctl restart wonder || true
           
           for i in {1..60}; do
             if tailscale ip -4 >/dev/null 2>&1; then
