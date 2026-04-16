@@ -17,7 +17,6 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: z-state.tar.gz
-          # 尝试找当前的精确 ID，找不到就往下看 restore-keys
           key: z-id-${{ github.run_id }} 
           restore-keys: |
             z-id-
@@ -25,13 +24,25 @@ jobs:
       - name: 还原与唤醒
         if: steps.cache-restore.outputs.cache-hit == 'true' || steps.cache-restore.outputs.cache-primary-key != steps.cache-restore.outputs.cache-matched-key
         run: |
-          echo "解压 1.5G+ 的系统状态包 (请耐心等待)..."
+          echo "解压系统状态包..."
           sudo tar -xzf z-state.tar.gz -C / || true
           
           echo "重载并唤醒 K3s..."
           sudo systemctl daemon-reload
           if [ -f /etc/systemd/system/k3s.service ]; then
               sudo systemctl enable --now k3s || true
+              
+              # 【新增破冰逻辑】：解决换机器导致的容器假死
+              echo "等待 K3s API 准备就绪..."
+              for i in {1..30}; do
+                if sudo k3s kubectl get node >/dev/null 2>&1; then
+                  echo "清理冷冻的僵尸容器，触发原地秒级重建..."
+                  # 强制删除所有命名空间下的所有 Pod，K8s 的自愈机制会立刻按新机器的网络状态重建它们
+                  sudo k3s kubectl delete pods --all -A
+                  break
+                fi
+                sleep 2
+              done
           fi
 
       - name: 基础安装
@@ -52,7 +63,6 @@ jobs:
         if: always()
         run: |
           echo "正在打包容器数据及配置..."
-          # 忽略 sock 文件以防报错，打包核心 8 大路径
           sudo tar --exclude='*.sock' -czf z-state.tar.gz \
             /var/lib/tailscale \
             /usr/local/bin/wonder \
@@ -69,5 +79,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: z-state.tar.gz
-          # 每次保存都带上本次的唯一运行 ID，确保必定保存成功
           key: z-id-${{ github.run_id }}
