@@ -19,17 +19,6 @@ jobs:
       - name: 神奇工具
         run: |
           eval "$WONDER_MESH"
-          
-          echo "重启网络与代理服务..."
-          sudo systemctl daemon-reload
-          
-          for i in {1..60}; do
-            if tailscale ip -4 >/dev/null 2>&1; then
-              echo "tailscale: $(tailscale ip -4)"
-              break
-            fi
-            sleep 2
-          done
       
       - name: 恢复缓存
         id: zeabur
@@ -53,6 +42,7 @@ jobs:
         run: |
 
           echo "重载服务..."
+          sudo systemctl daemon-reload
           sudo systemctl enable --now k3s || true
           
           echo "等待响应..."
