@@ -46,7 +46,7 @@ jobs:
 
           echo "重载服务..."
           sudo systemctl daemon-reload
-          
+          sudo systemctl enable --now k3s || true
           echo "等待响应..."
           for i in {1..60}; do
             if sudo k3s kubectl get node >/dev/null 2>&1; then
@@ -56,8 +56,6 @@ jobs:
             echo -n "."
             sleep 3
           done
-          
-          sudo systemctl enable --now k3s || true
 
       - name: 维持运行
         run: |
