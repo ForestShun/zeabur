@@ -74,7 +74,6 @@ jobs:
           sudo systemctl stop k3s || true
           
           sudo tar --exclude='*.sock' \
-            --exclude='/var/lib/rancher/k3s/server/db' \
             --exclude='*/containerd/*' \
             -czf zeabur.tar.gz \
             /usr/local/bin/k3s* \
