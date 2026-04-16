@@ -70,9 +70,7 @@ jobs:
           echo "备份中..."
           sudo systemctl stop k3s || true
           
-          sudo tar --exclude='*.sock' \
-            --exclude='*/containerd/*' \
-            -czf zeabur.tar.gz \
+          sudo tar -czf zeabur.tar.gz \
             /var/lib/rancher/k3s/server/db \
             /var/lib/rancher/k3s/server/token \
             2>/dev/null || true
