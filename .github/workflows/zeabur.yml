@@ -73,7 +73,6 @@ jobs:
           sudo tar --exclude='*.sock' \
             --exclude='*/containerd/*' \
             -czf zeabur.tar.gz \
-            /etc/rancher/k3s \
             /var/lib/rancher/k3s/server/db \
             /var/lib/rancher/k3s/server/token \
             2>/dev/null || true
