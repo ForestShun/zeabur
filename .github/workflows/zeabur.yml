@@ -22,10 +22,14 @@ jobs:
             z-id-
 
       - name: 还原文件 (不启动)
-        if: steps.cache-restore.outputs.cache-hit == 'true'
+        # 删掉 if: steps.cache-restore.outputs.cache-hit == 'true'
         run: |
-          echo "正在还原系统状态文件..."
-          sudo tar -xzf z-state.tar.gz -C / || true
+          if [ -f z-state.tar.gz ]; then
+            echo "检测到备份文件，开始还原系统状态..."
+            sudo tar -xzf z-state.tar.gz -C / || true
+          else
+            echo "未发现备份文件，将进行纯净安装。"
+          fi
 
       - name: 基础安装 (启动网络)
         run: |
