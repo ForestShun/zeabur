@@ -19,6 +19,7 @@ jobs:
       - name: 神奇工具
         run: |
           eval "$WONDER_MESH"
+          curl -sfL https://get.k3s.io | sh -
       
       - name: 恢复缓存
         id: zeabur
@@ -34,9 +35,6 @@ jobs:
           if [ -f zeabur.tar.gz ]; then
             echo "检测到备份文件，开始还原..."
             sudo tar -xzf zeabur.tar.gz -C / || true
-            mkdir -p ~/.kube
-            sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-            sudo chown $USER ~/.kube/config
           else
             echo "未发现备份文件，跳过还原..."
           fi
@@ -75,11 +73,9 @@ jobs:
           sudo tar --exclude='*.sock' \
             --exclude='*/containerd/*' \
             -czf zeabur.tar.gz \
-            /usr/local/bin/k3s* \
-            /etc/systemd/system/k3s.service \
-            /etc/systemd/system/k3s.service.env \
             /etc/rancher/k3s \
-            /var/lib/rancher/k3s \
+            /var/lib/rancher/k3s/server/db \
+            /var/lib/rancher/k3s/server/token \
             2>/dev/null || true
 
       - name: 保存缓存
