@@ -45,7 +45,6 @@ jobs:
           mkdir -p ~/.kube
           sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
           sudo chown $USER ~/.kube/config
-          chmod 600 ~/.kube/config
           sudo systemctl daemon-reload
           sudo systemctl enable --now k3s || true
           
