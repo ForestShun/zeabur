@@ -30,6 +30,7 @@ jobs:
           if [ -f zeabur.tar.gz ]; then
             echo "检测到备份文件，开始还原..."
             sudo tar -xzf zeabur.tar.gz -C / || true
+            curl -sfL https://get.k3s.io | sh -
           else
             echo "未发现备份文件，跳过还原..."
           fi
@@ -37,7 +38,6 @@ jobs:
       - name: 神奇工具
         run: |
           eval "$WONDER_MESH"
-          curl -sfL https://get.k3s.io | sh -
       
       - name: 唤醒启动
         run: |
