@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "节点在线: $(tailscale ip -4)"
           while true; do
-            if ! systemctl is-active --quiet k3s; then exit 1; fi
+            if ! systemctl is-active --quiet tailscaled; then exit 1; fi
             echo "[$(date -u)] 状态正常 | $(hostname)"
             sleep 3600
           done
