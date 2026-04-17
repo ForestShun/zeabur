@@ -1,8 +1,10 @@
 name: zeabur
+
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */6 * * *'
+  workflow_run:
+    workflows: ["zeabur"]
+    types:
+      - completed
 
 concurrency:
   group: zeabur
