@@ -43,8 +43,12 @@ jobs:
         run: |
 
           echo "重载服务..."
-          sudo systemctl daemon-reload
-          sudo systemctl enable --now k3s || true
+          if [ -f zeabur.tar.gz ]; then
+            echo "检测到备份文件，开始还原..."
+            curl -sfL https://get.k3s.io | sh -
+          else
+            echo "未发现备份文件，初次安装..."
+          fi
           echo "等待响应..."
           for i in {1..60}; do
             if sudo k3s kubectl get node >/dev/null 2>&1; then
